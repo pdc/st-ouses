@@ -45,7 +45,7 @@ class Entity(object):
     def _update_collection_in_kwargs(self, collection_attr, reverse_attr, cls, kwargs, x_kwargs):
         """Called during __init__ to add colection to kwargs.
         """
-        xs = kwargs.pop(collection_attr, None) or []
+        xs = list(kwargs.pop(collection_attr, []))
 
         for x in xs:
             setattr(x, reverse_attr, self)
@@ -82,7 +82,7 @@ def _to_obj(x, depth=0, seen=None, max_depth=None):
             seen = {x}
         else:
             seen.add(x)
-        obj = {'href': x.file_name(), 'depth': depth}
+        obj = {'href': x.file_name()}
         ns = x.link_fields
         if not (was_seen or max_depth is not None and depth >= max_depth):
             ns = x.link_fields + x.entity_fields
@@ -144,11 +144,12 @@ class Person(Entity):
         if not self.spouses:
             self.spouses = []
         else:
+            self.spouses = list(self.spouses)
             blob = {self} | set(self.spouses)
             for x in self.spouses:
                 blob |= set(x.spouses)
             for x in blob:
-                x.spouses.extend(blob - set(x.spouses))
+                x.spouses.extend(blob - set(x.spouses) - {x})
 
 
 class TestKit(unittest.TestCase):
@@ -255,6 +256,71 @@ class TestSpouses(unittest.TestCase):
         self.assertIn(bob, charley.spouses)
         self.assertIn(charley, bob.spouses)
 
+    def test_doesnt_marry_people_to_themselves(self):
+        # We go for the marrigage-blob model,
+        # where in this exapython mple Alice is married to Bob
+        # via the path Alice-Fang-Charley-Greta-Bob.
+        a, b, c, d, e = [Person(name=x) for x in ['alice', 'bob', 'charley', 'deep', 'eve']]
+        f = Person(name='fang', spouses=[a, c, e])
+        g = Person(name='graham', spouses=[b, c, d])
+
+        all_persons = set([a, b, c, d, e, f, g])
+        for x in all_persons:
+            self.assertEqual(len(x.spouses), 6)
+            self.assertEqual(set(x.spouses) | {x}, all_persons)
+
+    def test_dont_let_unofficial_liaisons_confuse_matters(self):
+        # This copies code I made to generate some data:
+        ps = [Person(name='Alice'), Person(name='Bob')]
+        ps.append(Person(name='Deepak', spouses=ps))
+        ps.append(Person(name='Charley'))
+
+        # Check this doesn’t accidentally add Charley as a spoise of Alice et al.
+        self.assertNotIn(ps[3], ps[2].spouses)
+
 
 if __name__ == '__main__':
-    unittest.main()
+    import json
+
+    ps = [Person(name='Alice'), Person(name='Bob')]
+    ps.append(Person(name='Deepak', spouses=ps))
+    ps.append(Person(name='Charley'))
+
+    ss = [Sack(holder=random.choice(ps)) for _ in range(6)]
+    ns = [x.strip() for x in """
+        Lucky   Oscar Max Bella Tiger   Molly Sam Max Misty   Coco Simba
+        Milo Coco    Angel Chloe   Tigger Lucy    Missy Missy
+        Lily Tigmokey Misty Tigger Kitty Oscar Missy Max Ginger Molly Felix
+        Smudge Sooty Tigger Charlie Alfie Oscar Millie Molly
+        Charlie Tigger Poppy Oscar Smudge Millie Daisy Max Jasper Misty
+        Charlie Milly Oscar Tiger Poppy Sophie Rosie Smudge  Lucy
+        Felix
+        Minka
+        Moritz
+        Charly
+        Tiger
+        Max
+        Susi
+        Lisa
+        Blacky
+        Muschi
+        Minou
+        Nabi
+        Grisou
+        Ti-Mine
+        Félix
+        Caramel
+        Mimi
+        Pacha
+        Charlotte
+        Minette
+        Chanel
+        Tiddles
+
+        """.split()]
+    cs = [Cat(name=n, sack=random.choice(ss), aloofness=random.randint(5, 15)) for n in ns[:20]]
+    ks = [Kit(name=n, cat=random.choice(cs), fluffiness=random.randint(3, 10)) for n in ns[20:]]
+
+    for p in ps + ss + cs + ks:
+        with open(p.file_name(), 'wb') as strm:
+            json.dump(p.to_entity_obj(max_depth=2), strm, indent=4)
