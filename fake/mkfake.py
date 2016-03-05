@@ -1,3 +1,7 @@
+#! /usr/bin/env python
+# -*-coding: UTF-8-*-
+
+from __future__ import unicode_literals
 import random
 import unittest
 
@@ -57,8 +61,8 @@ class Entity(object):
             xs.extend(cls(**aargs) for i in range(x_count))
         kwargs[collection_attr] = xs
 
-    def file_name(self):
-        return '%s%d.json' % (self.class_name, self.id)
+    def file_name(self, suffix=''):
+        return '%s%d%s.json' % (self.class_name, self.id, suffix)
 
     def __repr__(self):
         return ('<%s #%d%s>' % (
@@ -67,33 +71,41 @@ class Entity(object):
             ''.join(' %r' % (getattr(self, n),) for n in self.link_fields)))
 
     def to_link_obj(self):
-        return _to_obj(self, max_depth=0)
+        return _to_obj_2(self, max_depth=0)
 
     def to_entity_obj(self, max_depth=1):
-        return _to_obj(self, max_depth=max_depth)
+        return _to_obj_2(self, max_depth=max_depth)
 
 
-def _to_obj(x, depth=0, seen=None, max_depth=None):
-    if isinstance(x, basestring):
-        return x
-    if isinstance(x, Entity):
-        was_seen = seen and x in seen
-        if not seen:
-            seen = {x}
+def _to_obj_2(x, depth=0, seen=None, max_depth=None):
+    if not isinstance(x, Entity):
+        raise TypeError('Expected Entity, got %r' % (x,))
+    was_seen = seen and x in seen
+    if not seen:
+        seen = {x}
+    else:
+        seen.add(x)
+    obj = {'href': x.file_name()}
+    ns = x.link_fields
+    if not (was_seen or max_depth is not None and depth >= max_depth):
+        ns = x.link_fields + x.entity_fields
+    for n in ns:
+        v = getattr(x, n, None)
+        if v is None or (isinstance(v, Entity) and v in seen):
+            continue
+        elif isinstance(v, (basestring, int, float, bool)):
+            obj[n] = v
+        elif isinstance(v, Entity):
+            obj[n] = _to_obj_2(v, depth + 1, seen, max_depth)
+        elif hasattr(v, '__iter__'):
+            obj[n] = {
+                'href': x.file_name('-%s' % (n,)),
+            }
+            if max_depth is None or depth + 1 < max_depth:
+                obj[n]['items'] = [_to_obj_2(e, depth + 2, seen, max_depth) for e in v]
         else:
-            seen.add(x)
-        obj = {'href': x.file_name()}
-        ns = x.link_fields
-        if not (was_seen or max_depth is not None and depth >= max_depth):
-            ns = x.link_fields + x.entity_fields
-        for n in ns:
-            v = getattr(x, n)
-            if v is not None and (not isinstance(v, Entity) or v not in seen):
-                obj[n] = _to_obj(v, depth + 1, max_depth=max_depth, seen=seen)
-        return obj
-    if hasattr(x, '__iter__'):
-        return [_to_obj(e, depth, max_depth=max_depth, seen=seen) for e in x]
-    return x
+            raise TypeError('Don’t know how to objectify %n=%r' % (n, v))
+    return obj
 
 
 class Kit(Entity):
@@ -136,7 +148,7 @@ class Sack(Entity):
 class Person(Entity):
     class_name = 'person'
     link_fields = ['name']
-    entity_fields = ['sacks', 'spouses']
+    entity_fields = ['sacks', 'spouses', 'index']
 
     def __init__(self, cat_count=0, kit_count=0, **kwargs):
         self._update_collection_in_kwargs('sacks', 'holder', Sack, kwargs, {})
@@ -150,6 +162,20 @@ class Person(Entity):
                 blob |= set(x.spouses)
             for x in blob:
                 x.spouses.extend(blob - set(x.spouses) - {x})
+
+
+class Index(Entity):
+    """The index page has lists of people & not much else."""
+    class_name = 'index'
+    link_fields = []
+    entity_fields = ['persons']
+
+    def __init__(self, kit_count=0, **kwargs):
+        self._update_collection_in_kwargs('persons', 'index', Cat, kwargs, {})
+        super(Index, self).__init__(**kwargs)
+
+    def file_name(self, suffix=''):
+        return 'index%s.json' % (suffix,)
 
 
 class TestKit(unittest.TestCase):
@@ -218,13 +244,14 @@ class TestCat(unittest.TestCase):
         self.assertIs(sack, cat.sack)
 
     def test_obj_kits_dont_link_to_cat(self):
-        cat = Cat(kits=[Kit(), Kit()])
+        cat = Cat(kits=[Kit(name='Tiddles'), Kit(name='Whiskers')])
 
         obj = cat.to_entity_obj(max_depth=2)
 
-        self.assertEqual(len(obj['kits']), 2)
-        self.assertEqual(obj['kits'][0]['name'], cat.kits[0].name)
-        self.assertNotIn('cat', obj['kits'][0])
+        items = obj['kits']['items']
+        self.assertEqual(len(items), 2)
+        self.assertEqual(items[0]['name'], 'Tiddles')
+        self.assertNotIn(cat, items[0])
 
 
 class TestSack(unittest.TestCase):
@@ -288,39 +315,19 @@ if __name__ == '__main__':
 
     ss = [Sack(holder=random.choice(ps)) for _ in range(6)]
     ns = [x.strip() for x in """
-        Lucky   Oscar Max Bella Tiger   Molly Sam Max Misty   Coco Simba
-        Milo Coco    Angel Chloe   Tigger Lucy    Missy Missy
-        Lily Tigmokey Misty Tigger Kitty Oscar Missy Max Ginger Molly Felix
-        Smudge Sooty Tigger Charlie Alfie Oscar Millie Molly
-        Charlie Tigger Poppy Oscar Smudge Millie Daisy Max Jasper Misty
-        Charlie Milly Oscar Tiger Poppy Sophie Rosie Smudge  Lucy
-        Felix
-        Minka
-        Moritz
-        Charly
-        Tiger
-        Max
-        Susi
-        Lisa
-        Blacky
-        Muschi
-        Minou
-        Nabi
-        Grisou
-        Ti-Mine
-        Félix
-        Caramel
-        Mimi
-        Pacha
-        Charlotte
-        Minette
-        Chanel
-        Tiddles
-
+        Lucky   Oscar Max Bella Tiger   Molly Sam Max Misty   Coco
+        Simba Milo Coco    Angel Chloe   Tigger Lucy    Missy Missy
+        Lily Tigmokey Misty Tigger Kitty Oscar Missy Max Ginger Molly
+        Felix Smudge Sooty Tigger Charlie Alfie Oscar Millie Molly
+        Charlie Tigger Poppy Oscar Smudge Millie Daisy Max Jasper
+        Misty Charlie Milly Oscar Tiger Poppy Sophie Rosie Smudge
+        Lucy Felix Minka Moritz Charly Tiger Max Susi Lisa Blacky
+        Muschi Minou Nabi Grisou Ti-Mine Félix Caramel Mimi Pacha
+        Charlotte Minette Chanel Tiddles
         """.split()]
     cs = [Cat(name=n, sack=random.choice(ss), aloofness=random.randint(5, 15)) for n in ns[:20]]
     ks = [Kit(name=n, cat=random.choice(cs), fluffiness=random.randint(3, 10)) for n in ns[20:]]
 
-    for p in ps + ss + cs + ks:
+    for p in ps + ss + cs + ks + [Index(persons=ps)]:
         with open(p.file_name(), 'wb') as strm:
             json.dump(p.to_entity_obj(max_depth=2), strm, indent=4)
