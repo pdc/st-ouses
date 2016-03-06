@@ -14,34 +14,18 @@ describe('dlActions.request', () => {
         };
 
         const payload = {
+            "href": "person4.json",
+            "name": "Charley",
             "sacks": {
-                "items": [
-                    [
-                        {
-                            "href": "sack5.json"
-                        }
-                    ]
-                ],
                 "href": "person4-sacks.json"
             },
-            "index": {
-                "persons": {
-                    "href": "index-persons.json"
-                },
-                "href": "index.json"
-            },
             "spouses": {
-                "items": [
-                    []
-                ],
                 "href": "person4-spouses.json"
-            },
-            "href": "person4.json",
-            "name": "Charley"
+            }
         };
         spyOn(window, 'fetch')
         .and.returnValue(Promise.resolve({json: () => payload}));
-        const dispatch = jasmine.createSpy('displatch');
+        const dispatch = jasmine.createSpy('dispatch');
         const getState = () => before;
 
         dlActions.request('person', 'http://example.com/person4.json')
