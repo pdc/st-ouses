@@ -1,9 +1,9 @@
-import {bootAction, dlActions} from '../actions'
+import {dlRequestAction, dlRequestedAction, dlReceivedAction} from '../actions'
 
-describe('dlActions.request', () => {
 
+describe('dlRequestAction', () => {
     it('is a thunk', () => {
-        expect(typeof dlActions.request('example.json')).toBe('function');
+        expect(typeof dlRequestAction('example.json')).toBe('function');
     });
 
     it('dispatches REQUESTED and RECEIVED actions', done => {
@@ -14,13 +14,13 @@ describe('dlActions.request', () => {
         };
 
         const payload = {
-            "href": "person4.json",
-            "name": "Charley",
-            "sacks": {
-                "href": "person4-sacks.json"
+            href: "person4.json",
+            name: "Charley",
+            sacks: {
+                href: "person4-sacks.json"
             },
-            "spouses": {
-                "href": "person4-spouses.json"
+            spouses: {
+                href: "person4-spouses.json"
             }
         };
         spyOn(window, 'fetch')
@@ -28,11 +28,11 @@ describe('dlActions.request', () => {
         const dispatch = jasmine.createSpy('dispatch');
         const getState = () => before;
 
-        dlActions.request('person', 'http://example.com/person4.json')
+        dlRequestAction('persons', 'http://example.com/person4.json')
         (dispatch, getState)
         .then(() => {
-            expect(dispatch).toHaveBeenCalledWith(dlActions.requested('person', 'http://example.com/person4.json'));
-            expect(dispatch).toHaveBeenCalledWith(dlActions.received('person', [payload]));
+            expect(dispatch).toHaveBeenCalledWith(dlRequestedAction('persons', 'http://example.com/person4.json'));
+            expect(dispatch).toHaveBeenCalledWith(dlReceivedAction('persons', 'http://example.com/person4.json', [payload]));
         })
         .then(done, fail);
     });

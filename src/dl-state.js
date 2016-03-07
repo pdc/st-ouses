@@ -1,42 +1,22 @@
+import {resolve as urlResolve} from 'url';
 
-class Entity {
-    constructor(id, url, raw, dlState) {
-        this.id = id;
-        this.url = url;
-        Object.assign(this, raw);
-    }
-
-    /** USed during construction to convert collections */
-    _clarifyCollection(attr, collection, dlState) {
-        if (!collection) {
-            collection = attr;
-        }
-        if (this[attr].items) {
-            this[attr].ids = this[attr].items.map(x => getUrlID(dlState, this.href, x.href));
-            delete this[attr].items;
-        }
-    }
-}
-
-class Person extends Entity {
-    constructor(id, url, raw, dlState) {
-        super(id, url, raw, dlState);
-        this._clarifyCollection('spouses', 'persons');
-        this._clarifyCollection('sacks');
-    }
-}
-
-const classesByCls = {
-    person: Person,
-}
-
-const collectionByCls = {
-    person: 'persons',
-}
-
+/**
+ * Map attributes on to the generic term for a collection of that type.
+ *
+ * Mostly a collection of cats will be held in a
+ * variable named `cats`. This definition only includes
+ * exceptions to this rule (mostly for persons).
+ */
 const collectionByAttr = {
     spouses: 'persons',
-}
+};
+
+
+export const initialDlState = {
+    nextID: 1,
+    idsByUrl: {},
+};
+
 
 /**
 * Arguments:
@@ -53,56 +33,70 @@ export function getLoadedEntity(dlState, collectionName, idOrUrl) {
     return dlState[collectionName].byID[id];
 }
 
+
 /**
  * Create a new copyof state with this entity loaded.
  * Also updated with any embedded entities.
  */
-export function withLoadedEntity(dlState, collectionName, url, entity) {
+export function withLoadedEntity(dlState, collectionName, url, entities) {
     const updatedCollections = {};
     let nextID = dlState.nextID;
 
     // Put one entity & return its ID.
-    function put1(collectionName, url, entity) {
-        const id = nextID++;
-        dlState.idsByUrl[trimmedUrl(dlState, url)] = id;
+    function put1(collectionName, url, entities) {
+        const ids = [];
+        const byID = {};
+        for (const entity of entities) {
+            const entityUrl = urlResolve(url, entity.href);
+            const entityUrlTrimmed = trimmedUrl(dlState, entityUrl); // relative to prefix
+            const id = nextID++;
+            dlState.idsByUrl[entityUrlTrimmed] = id;
 
-        const entity1 = Object.assign({id}, entity);
-        for (const k in entity1) {
-            if (entity1.hasOwnProperty(k)) {
-                const v = entity1[k];
-                if (typeof v === 'object' && 'items' in v) {
-                    // This is a collection.
-                    const coln = collectionByAttr[k] || k;
-                    const u = v.href;
-                    if (v.items) {
-                        v.ids = v.items.map(x => put1(coln, x.href, x));
+            const entity1 = Object.assign({id}, entity, {href: entityUrlTrimmed});
+            for (const k in entity1) {
+                if (entity1.hasOwnProperty(k)) {
+                    const v = entity1[k];
+                    if (typeof v === 'object' && 'items' in v) {
+                        // This is a collection.
+                        const coln = collectionByAttr[k] || k;
+                        const colnUrl = urlResolve(entityUrl, v.href);
+                        if (v.items) {
+                            v.ids = put1(coln, colnUrl, v.items);
+                        }
+                        delete v.items;
                     }
-                    delete v.items;
                 }
             }
+            ids.push(id);
+            byID[id] = entity1;
         }
-        if (!updatedCollections[collectionName]) {
+
+        let updated = updatedCollections[collectionName]
+        if (!updated) {
             const old = dlState[collectionName];
             if (old) {
-                updatedCollections[collectionName] = {
-                    ids: [...old.ids],
+                updatedCollections[collectionName] = updated = {
+                    ids: old.ids.slice(),
                     byID: Object.assign({}, old.byID),
                 };
             } else {
-                updatedCollections[collectionName] = {ids: [], byID: {}};
+                updatedCollections[collectionName] = updated = {ids: [], byID: {}};
             }
         }
-        const updated = updatedCollections[collectionName];
-        updated.ids.push(id);
-        updated.byID[id] = entity1;
-        return id;
+        updated.ids = updated.ids.concat(ids);
+        Object.assign(updated.byID, byID);
+        return ids;
     }
 
-    put1(collectionName, url, entity);
+    put1(collectionName, url, entities);
     return Object.assign({}, dlState, updatedCollections, {nextID});
 }
 
+
 function trimmedUrl(dlState, url) {
+    if (!dlState.prefix) {
+        throw Error('Cannot get entities without setting API endpoint URL.')
+    }
     if (url.substr(0, dlState.prefix.length) === dlState.prefix) {
         return url.substr(dlState.prefix.length);
     }

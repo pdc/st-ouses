@@ -1,55 +1,68 @@
-const PERSONS_RECEIVED = 'PERSONS_RECEIVED';
+export const OPTIONS = 'OPTIONS';
+
+/**
+ * Action dispatched from the topmost app HTML page.
+ * Used to pass settings from server env to the JavaScript code.
+ */
+export function optionsAction(options) {
+    return Object.assign({}, options, {type: OPTIONS});
+}
+
+
+export const DL_REQUESTED = 'DL_REQUESTED';
+export const DL_ERROR = 'DL_ERROR';
+export const DL_RECEIVED = 'DL_RECEIVED';
 
 /**
  * Actions for downloading entities from server.
  *
- * cls -- specifies type of entity (person, sack, cat, kit)
+ * collectionName -- specifies type of entity (person, sack, cat, kit)
  * url -- complete or abbreviated URL of entity
  * error -- an Error instance
- * entity -- an instance of cls from the server
+ * entity -- an instance of collectionName from the server
  * entities -- an array of ditto
  */
-export const dlActions = {
-    /* Dispatched to request info on this entity. */
-    request(cls, url) {
-        return (dispatch, getState) => {
-            dispatch(dlActions.requested(cls, url));
-            return fetch(url)
-            .then(response => response.json())
-            .then(entity => {
-                dispatch(dlActions.received(cls, [entity]))
-            })
-            .catch(error => {
-                dispatch(dlActions.error(cls, url, error));
-            });
-        };
-    },
 
-    /* Dispatched by `request`. */
-    requested(cls, url) {
-        return {
-            type: 'DL_REQUESTED',
-            cls,
-            url,
-        };
-    },
+/* Dispatched to request info on this entity. */
+export function dlRequestAction(collectionName, url) {
+    return (dispatch, getState) => {
+        dispatch(dlRequestedAction(collectionName, url));
+        return fetch(url)
+        .then(response => response.json())
+        .then(entity => {
+            dispatch(dlReceivedAction(collectionName, url, [entity]))
+        })
+        .catch(error => {
+            dispatch(dlErrorActon(collectionName, url, error));
+        });
+    };
+}
 
-    /* Dispatched by `request`. */
-    error(cls, url, error) {
-        return {
-            type: 'DL_ERROR',
-            cls,
-            url,
-            error,
-        }
-    },
+/* Dispatched by `request`. */
+export function dlRequestedAction(collectionName, url) {
+    return {
+        type: DL_REQUESTED,
+        collectionName,
+        url,
+    };
+}
 
-    /* Dispatched by `request`. */
-    received(cls, entities) {
-        return {
-            type: 'DL_RECEIVED',
-            cls,
-            entities,
-        }
-    },
+/* Dispatched by `request`. */
+export function dlErrorAction(collectionName, url, error) {
+    return {
+        type: DL_ERROR,
+        collectionName,
+        url,
+        error,
+    }
+}
+
+/* Dispatched by `request`. */
+export function dlReceivedAction(collectionName, url, entities) {
+    return {
+        type: DL_RECEIVED,
+        collectionName,
+        url,
+        entities,
+    }
 }
