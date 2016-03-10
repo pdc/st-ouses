@@ -49,21 +49,35 @@ export function withLoadedEntity(dlState, collectionName, url, entities) {
         for (const entity of entities) {
             const entityUrl = urlResolve(url, entity.href);
             const entityUrlTrimmed = trimmedUrl(dlState, entityUrl); // relative to prefix
-            const id = nextID++;
-            dlState.idsByUrl[entityUrlTrimmed] = id;
+
+            let id = dlState.idsByUrl[entityUrlTrimmed];
+            const isNew = !id;
+            if (isNew) {
+                dlState.idsByUrl[entityUrlTrimmed] = id = nextID++;
+            }
 
             const entity1 = Object.assign({id}, entity, {href: entityUrlTrimmed});
             for (const k in entity1) {
                 if (entity1.hasOwnProperty(k)) {
                     const v = entity1[k];
-                    if (typeof v === 'object' && 'items' in v) {
-                        // This is a collection.
-                        const coln = collectionByAttr[k] || k;
-                        const colnUrl = urlResolve(entityUrl, v.href);
-                        if (v.items) {
-                            v.ids = put1(coln, colnUrl, v.items);
+                    if (typeof v === 'object') {
+                        if ('items' in v) {
+                            // This is a collection.
+                            const coln = collectionByAttr[k] || k;
+                            const colnUrl = urlResolve(entityUrl, v.href);
+                            if (v.items) {
+                                v.ids = put1(coln, colnUrl, v.items);
+                            }
+                            delete v.items;
+                        } else if ('href' in v) {
+                            // This is a single entity.
+                            const kplural = k + 's';
+                            const coln = collectionByAttr[kplural] || kplural;
+                            const vUrl = urlResolve(entityUrl, v.href);
+                            const [vID] = put1(coln, vUrl, [v]);
+                            v.id = vID
+                            v.href =trimmedUrl(dlState, vUrl);
                         }
-                        delete v.items;
                     }
                 }
             }
@@ -75,16 +89,21 @@ export function withLoadedEntity(dlState, collectionName, url, entities) {
         if (!updated) {
             const old = dlState[collectionName];
             if (old) {
-                updatedCollections[collectionName] = updated = {
+                updated = {
                     ids: old.ids.slice(),
                     byID: Object.assign({}, old.byID),
                 };
             } else {
-                updatedCollections[collectionName] = updated = {ids: [], byID: {}};
+                updated = {ids: [], byID: {}};
             }
+            updatedCollections[collectionName] = updated;
         }
         updated.ids = updated.ids.concat(ids);
-        Object.assign(updated.byID, byID);
+        for (const k in byID) {
+            if (byID.hasOwnProperty(k)) {
+                updated.byID[k] = Object.assign({}, updated.byID[k], byID[k]);
+            }
+        }
         return ids;
     }
 
