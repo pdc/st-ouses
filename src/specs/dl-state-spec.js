@@ -1,4 +1,4 @@
-import {Person,getLoadedEntity, withLoadedEntity} from '../dl-state';
+import {initialDlState, getLoadedEntity, withLoadedEntity} from '../dl-state';
 
 describe('getLoadedEntity', () => {
     const entity = {
@@ -13,18 +13,15 @@ describe('getLoadedEntity', () => {
             href: "person4-spouses.json"
         },
     };
-    const dlState = {
+    const dlState = Object.assign({}, initialDlState, {
         prefix: 'http://example.com/foo/',
         idsByUrl: {
             'person4.json': 13,
         },
-        persons: {
-            ids: [13],
-            byID: {
-                13: entity,
-            }
+        entitiesByID: {
+            13: entity,
         }
-    };
+    });
 
     it('returns entity by ID', () => {
         expect(getLoadedEntity(dlState, 'persons', 13)).toEqual(entity);
@@ -60,22 +57,16 @@ describe('withLoadedEntity', () => {
                 href: "person4-spouses.json"
             },
         };
-        const before = {
+        const before = Object.assign({}, initialDlState, {
             prefix: 'http://example.com/bar/',
             nextID: 14,
-            idsByUrl: {
-            },
-            persons: {
-                ids: [],
-                byID: {
-                }
-            }
-        };
+        });
 
         const after = withLoadedEntity(before, 'persons', 'http://example.com/bar/person4.json', [entity0]);
 
         const item = {
             id: 14,
+            cls: 'person',
             href: 'person4.json',
             name: 'Charley',
             sacks: {
@@ -94,11 +85,10 @@ describe('withLoadedEntity', () => {
 
     it('creates stubs entries from links in collection', () => {
         // Intentionally using a different style of URL scheme as well.
-        const before = {
+        const before = Object.assign({}, initialDlState, {
             prefix: 'http://example.com/r/',
             nextID: 14,
-            idsByUrl: {},
-        };
+        });
 
         const entity0 = {
             href: "/r/cats/13/",
@@ -130,7 +120,8 @@ describe('withLoadedEntity', () => {
         const kitStub = {
             href: "kits/39/",  // Changed to be relative to prefix
             name: "Molly",
-            id: kitID
+            id: kitID,  // Replaces href
+            cls: 'kit',
         };
         expect(getLoadedEntity(after, 'kits', 'http://example.com/r/kits/39/')).toEqual(kitStub);
         expect(getLoadedEntity(after, 'kits', 'kits/39/')).toEqual(kitStub);
@@ -138,21 +129,18 @@ describe('withLoadedEntity', () => {
     });
 
     it('uses same ID for URL seen before', () => {
-        const before = {
+        const before = Object.assign({}, initialDlState, {
             prefix: 'http://example.com/r/',
             nextID: 14,
             idsByUrl: {'cats/13/': 13},
-            cats: {
-                ids: [13],
-                byID: {
-                    13: {
-                        id: 13,
-                        href: 'cats/13/',
-                        name: 'Max',
-                    },
+            entitiesByID: {
+                13: {
+                    id: 13,
+                    href: 'cats/13/',
+                    name: 'Max',
                 },
             },
-        };
+        });
 
         const entity0 = {
             href: "/r/cats/13/",
@@ -180,29 +168,27 @@ describe('withLoadedEntity', () => {
         };
         const after = withLoadedEntity(before, 'cats', 'http://example.com/bar/search', [entity0]);
 
+        expect(getLoadedEntity(after, 'cats', 13).aloofness).toBe(6);
         expect(getLoadedEntity(after, 'cats', 13).kits.ids.length).toBe(1);
         const kitID = getLoadedEntity(after, 'cats', 13).kits.ids[0];
         expect(kitID).toBe(14);
         expect(getLoadedEntity(after, 'kits', kitID).name).toBe('Molly');
-        expect(getLoadedEntity(after, 'cats', 14)).toBeFalsy();  // Check didn’t mint new ID.
+        expect(getLoadedEntity(after, 'kits', kitID).cls).toBe('kit');
     });
 
     it('does not clobber full entity with stub', () => {
-        const before = {
+        const before = Object.assign({}, initialDlState, {
             prefix: 'http://example.com/',
             nextID: 70,
             idsByUrl: {'kit44.json': 44},
-            kits: {
-                ids: [44],
-                byID: {
-                    44: {
-                        "href": "kit44.json",
-                        "name": "Charlie",
-                        "fluffiness": 6
-                    },
+            entitiesByID: {
+                44: {
+                    "href": "kit44.json",
+                    "name": "Charlie",
+                    "fluffiness": 6
                 },
             },
-        };
+        });
 
         const entity0 = {
             "kits": {
@@ -234,11 +220,9 @@ describe('withLoadedEntity', () => {
     });
 
     it('creates stubs for entities as well as collections', () => {
-        const before = {
+        const before = Object.assign({}, initialDlState, {
             prefix: 'http://example.com/',
-            nextID: 1,
-            idsByUrl: {},
-        };
+        });
 
         const kit69 = {
             "href": "/kits/69/",

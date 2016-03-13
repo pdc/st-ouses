@@ -9,12 +9,23 @@ import {resolve as urlResolve} from 'url';
  */
 const collectionByAttr = {
     spouses: 'persons',
+    holders: 'persons',  // when following a `holder` link
 };
+
+
+/**
+ * Map collection name to entity class (lowercase).
+ *
+ * Generally class is singular of collection name.
+ * This is only used to record exceptions to that rule.
+ */
+const clsByCollection = {}
 
 
 export const initialDlState = {
     nextID: 1,
     idsByUrl: {},
+    entitiesByID: {},
 };
 
 
@@ -22,7 +33,7 @@ export const initialDlState = {
 * Arguments:
 *    dlState --
 *    collection -- collection name (e.g., `cats`)
-*    idOrUrl -- either a numeric ID or a string tat is a URL reference
+*    idOrUrl -- either a numeric ID or a string that is a URL reference
 */
 export function getLoadedEntity(dlState, collectionName, idOrUrl) {
     let id = idOrUrl;
@@ -30,7 +41,7 @@ export function getLoadedEntity(dlState, collectionName, idOrUrl) {
         let url = trimmedUrl(dlState, idOrUrl);
         id = dlState.idsByUrl[url];
     }
-    return dlState[collectionName].byID[id];
+    return dlState.entitiesByID[id];
 }
 
 
@@ -39,13 +50,17 @@ export function getLoadedEntity(dlState, collectionName, idOrUrl) {
  * Also updated with any embedded entities.
  */
 export function withLoadedEntity(dlState, collectionName, url, entities) {
-    const updatedCollections = {};
+    if (entities.length === 0) {
+        return;
+    }
+
+    // Record changes here. We will apply them at the end.
+    const entitiesByID = {};
     let nextID = dlState.nextID;
 
     // Put one entity & return its ID.
     function put1(collectionName, url, entities) {
         const ids = [];
-        const byID = {};
         for (const entity of entities) {
             const entityUrl = urlResolve(url, entity.href);
             const entityUrlTrimmed = trimmedUrl(dlState, entityUrl); // relative to prefix
@@ -56,10 +71,17 @@ export function withLoadedEntity(dlState, collectionName, url, entities) {
                 dlState.idsByUrl[entityUrlTrimmed] = id = nextID++;
             }
 
-            const entity1 = Object.assign({id}, entity, {href: entityUrlTrimmed});
-            for (const k in entity1) {
-                if (entity1.hasOwnProperty(k)) {
-                    const v = entity1[k];
+            const cls = clsByCollection[collectionName] || collectionName.slice(0, collectionName.length - 1);
+            const entity1 = Object.assign(
+                {id, cls},
+                dlState.entitiesByID[id],
+                entitiesByID[id],
+                entity,
+                {href: entityUrlTrimmed}
+            );
+            for (const k in entity) {
+                if (entity.hasOwnProperty(k)) {
+                    const v = entity[k];
                     if (typeof v === 'object') {
                         if ('items' in v) {
                             // This is a collection.
@@ -82,33 +104,13 @@ export function withLoadedEntity(dlState, collectionName, url, entities) {
                 }
             }
             ids.push(id);
-            byID[id] = entity1;
-        }
-
-        let updated = updatedCollections[collectionName]
-        if (!updated) {
-            const old = dlState[collectionName];
-            if (old) {
-                updated = {
-                    ids: old.ids.slice(),
-                    byID: Object.assign({}, old.byID),
-                };
-            } else {
-                updated = {ids: [], byID: {}};
-            }
-            updatedCollections[collectionName] = updated;
-        }
-        updated.ids = updated.ids.concat(ids);
-        for (const k in byID) {
-            if (byID.hasOwnProperty(k)) {
-                updated.byID[k] = Object.assign({}, updated.byID[k], byID[k]);
-            }
+            entitiesByID[id] = entity1;
         }
         return ids;
     }
 
     put1(collectionName, url, entities);
-    return Object.assign({}, dlState, updatedCollections, {nextID});
+    return Object.assign({}, dlState, {nextID, entitiesByID});
 }
 
 
