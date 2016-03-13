@@ -1,6 +1,7 @@
 import {reducer} from '../reducers';
-import {dlReceivedAction, optionsAction} from '../actions';
+import {dlRequestedAction, dlReceivedAction, optionsAction, navGotoAction} from '../actions';
 import {getLoadedEntity} from '../dl-state';
+import {initialNavState, UNKNOWN, LOADING, OK} from '../nav-state';
 
 
 describe('dl [reducer]', () => {
@@ -35,8 +36,54 @@ describe('dl [reducer]', () => {
                 },
             },
         };
-        const after = reducer(before, dlReceivedAction('kits', 'http://example.com/kit77.json', [entity]));
+        const after = reducer(before, dlReceivedAction('kit', 'http://example.com/kit77.json', [entity]));
 
-        expect(getLoadedEntity(after.dl, 'kits', 'kit77.json').name).toBe('Muschi');
+        const e = getLoadedEntity(after.dl, 'kit77.json');
+        expect(e.name).toBe('Muschi');
+        expect(e.cls).toBe('kit');
+    });
+});
+
+describe('nav [reducer]', () => {
+    let before;  // holds state before action
+
+    beforeEach(() => {
+        before = reducer(reducer(), optionsAction({
+            api: {
+                href: 'http://example.com/',
+            }
+        }));
+    });
+
+    it('sets entityUrl after GOTO', () => {
+        const after = reducer(before, navGotoAction('person', 'person34/'));
+
+        expect(after.nav.entity.href).toBe('person34/');
+        expect(after.nav.entity.cls).toBe('person');
+        expect(after.nav.loadingStatus).toBe(UNKNOWN);
+    });
+
+    it('sets loadingStatus to LOADING when REQUESTED', () => {
+        before = reducer(before, navGotoAction('person', 'persons/34/'));
+
+        const after = reducer(before, dlRequestedAction('person', 'persons/34/'));
+
+        expect(after.nav.loadingStatus).toBe(LOADING);
+    });
+
+    it('doesn’t set loadingStatus when REQUESTED wth different URL', () => {
+        before = reducer(before, navGotoAction('person', 'persons/34/'));
+
+        const after = reducer(before, dlRequestedAction('person', 'cats/69/'));
+
+        expect(after.nav.loadingStatus).toBe(UNKNOWN);
+    });
+
+    it('sets loadingStatus to OK when RECEIVED', () => {
+        before = reducer(before, navGotoAction('person', 'persons/34/'));
+
+        const after = reducer(before, dlReceivedAction('person', 'persons/34/', []));
+
+        expect(after.nav.loadingStatus).toBe(OK);
     });
 });

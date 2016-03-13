@@ -38,6 +38,9 @@ module.exports = {
         new TransferWebpackPlugin([
             {from: 'root', to: ''}
         ]),
+        new webpack.ProvidePlugin({
+            'fetch': 'imports?this=>global!exports?global.fetch!whatwg-fetch'
+        }),
         /*
         new webpack.optimize.UglifyJsPlugin({
             compress: {

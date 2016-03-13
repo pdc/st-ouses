@@ -24,23 +24,23 @@ describe('getLoadedEntity', () => {
     });
 
     it('returns entity by ID', () => {
-        expect(getLoadedEntity(dlState, 'persons', 13)).toEqual(entity);
+        expect(getLoadedEntity(dlState, 13)).toEqual(entity);
     });
 
     it('returns falsy if no entity with ID', () => {
-        expect(getLoadedEntity(dlState, 'persons', 17)).toBeFalsy();
+        expect(getLoadedEntity(dlState, 17)).toBeFalsy();
     });
 
     it('returns entity by Url relative to prefix', () => {
-        expect(getLoadedEntity(dlState, 'persons', 'person4.json')).toEqual(entity);
+        expect(getLoadedEntity(dlState, 'person4.json')).toEqual(entity);
     });
 
     it('returns falsy if no entity with Url', () => {
-        expect(getLoadedEntity(dlState, 'persons', 'person9.json')).toBeFalsy();
+        expect(getLoadedEntity(dlState, 'person9.json')).toBeFalsy();
     });
 
     it('returns entity by Url including prefix', () => {
-        expect(getLoadedEntity(dlState, 'persons', 'http://example.com/foo/person4.json')).toEqual(entity);
+        expect(getLoadedEntity(dlState, 'http://example.com/foo/person4.json')).toEqual(entity);
     });
 });
 
@@ -62,7 +62,7 @@ describe('withLoadedEntity', () => {
             nextID: 14,
         });
 
-        const after = withLoadedEntity(before, 'persons', 'http://example.com/bar/person4.json', [entity0]);
+        const after = withLoadedEntity(before, 'person', 'http://example.com/bar/person4.json', [entity0]);
 
         const item = {
             id: 14,
@@ -78,9 +78,9 @@ describe('withLoadedEntity', () => {
                 href: 'person4-spouses.json',
             },
         };
-        expect(getLoadedEntity(after, 'persons', 'http://example.com/bar/person4.json')).toEqual(item);
-        expect(getLoadedEntity(after, 'persons', 'person4.json')).toEqual(item);
-        expect(getLoadedEntity(after, 'persons', 14)).toEqual(item);
+        expect(getLoadedEntity(after, 'http://example.com/bar/person4.json')).toEqual(item);
+        expect(getLoadedEntity(after, 'person4.json')).toEqual(item);
+        expect(getLoadedEntity(after, 14)).toEqual(item);
     });
 
     it('creates stubs entries from links in collection', () => {
@@ -114,18 +114,18 @@ describe('withLoadedEntity', () => {
                 }
             }
         };
-        const after = withLoadedEntity(before, 'cats', 'http://example.com/bar/random', [entity0]);
+        const after = withLoadedEntity(before, 'cat', 'http://example.com/bar/random', [entity0]);
 
-        const kitID = getLoadedEntity(after, 'cats', 14).kits.ids[0];
+        const kitID = getLoadedEntity(after, 14).kits.ids[0];
         const kitStub = {
+            id: kitID,
+            cls: 'kit',
             href: "kits/39/",  // Changed to be relative to prefix
             name: "Molly",
-            id: kitID,  // Replaces href
-            cls: 'kit',
         };
-        expect(getLoadedEntity(after, 'kits', 'http://example.com/r/kits/39/')).toEqual(kitStub);
-        expect(getLoadedEntity(after, 'kits', 'kits/39/')).toEqual(kitStub);
-        expect(getLoadedEntity(after, 'kits', 15)).toEqual(kitStub);
+        expect(getLoadedEntity(after, 'http://example.com/r/kits/39/')).toEqual(kitStub);
+        expect(getLoadedEntity(after, 'kits/39/')).toEqual(kitStub);
+        expect(getLoadedEntity(after, 15)).toEqual(kitStub);
     });
 
     it('uses same ID for URL seen before', () => {
@@ -166,14 +166,16 @@ describe('withLoadedEntity', () => {
                 }
             }
         };
-        const after = withLoadedEntity(before, 'cats', 'http://example.com/bar/search', [entity0]);
+        const after = withLoadedEntity(before, 'cat', 'http://example.com/bar/search', [entity0]);
 
-        expect(getLoadedEntity(after, 'cats', 13).aloofness).toBe(6);
-        expect(getLoadedEntity(after, 'cats', 13).kits.ids.length).toBe(1);
-        const kitID = getLoadedEntity(after, 'cats', 13).kits.ids[0];
+        const cat1 = getLoadedEntity(after, 13);
+        expect(cat1.aloofness).toBe(6);
+        expect(cat1.kits.ids.length).toBe(1);
+        const kitID = cat1.kits.ids[0];
         expect(kitID).toBe(14);
-        expect(getLoadedEntity(after, 'kits', kitID).name).toBe('Molly');
-        expect(getLoadedEntity(after, 'kits', kitID).cls).toBe('kit');
+        const kit1 = getLoadedEntity(after, kitID);
+        expect(kit1.name).toBe('Molly');
+        expect(kit1.cls).toBe('kit');
     });
 
     it('does not clobber full entity with stub', () => {
@@ -214,9 +216,9 @@ describe('withLoadedEntity', () => {
                 }
             }
         };
-        const after = withLoadedEntity(before, 'cats', 'http://example.com/cat13.json', [entity0]);
+        const after = withLoadedEntity(before, 'cat', 'http://example.com/cat13.json', [entity0]);
 
-        expect(getLoadedEntity(after, 'kits', 44).fluffiness).toBe(6);
+        expect(getLoadedEntity(after, 44).fluffiness).toBe(6);
     });
 
     it('creates stubs for entities as well as collections', () => {
@@ -240,8 +242,8 @@ describe('withLoadedEntity', () => {
                 }
             },
         };
-        const after = withLoadedEntity(before, 'kits', 'http://example.com/kits/69/', [kit69]);
+        const after = withLoadedEntity(before, 'kit', 'http://example.com/kits/69/', [kit69]);
 
-        expect(getLoadedEntity(after, 'cats', 'cats/15/').name).toBe('Tiger');
+        expect(getLoadedEntity(after, 'cats/15/').name).toBe('Tiger');
     });
 });

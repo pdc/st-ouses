@@ -1,3 +1,6 @@
+import {unresolveUrl, resolveHref} from './dl-state';
+
+
 export const OPTIONS = 'OPTIONS';
 
 /**
@@ -16,53 +19,51 @@ export const DL_RECEIVED = 'DL_RECEIVED';
 /**
  * Actions for downloading entities from server.
  *
- * collectionName -- specifies type of entity (person, sack, cat, kit)
+ * cls -- specifies type of entity (person, sack, cat, kit)
  * url -- complete or abbreviated URL of entity
  * error -- an Error instance
- * entity -- an instance of collectionName from the server
+ * entity -- an instance of cls from the server
  * entities -- an array of ditto
  */
 
 /* Dispatched to request info on this entity. */
-export function dlRequestAction(collectionName, url) {
+export function dlRequestAction(cls, href) {
     return (dispatch, getState) => {
-        dispatch(dlRequestedAction(collectionName, url));
+        const state = getState();
+        const url = resolveHref(state.dl, href);
+        const canonicalHref = unresolveUrl(state.dl, url);
+
+        dispatch(dlRequestedAction(cls, canonicalHref));
+
         return fetch(url)
         .then(response => response.json())
         .then(entity => {
-            dispatch(dlReceivedAction(collectionName, url, [entity]))
+            dispatch(dlReceivedAction(cls, canonicalHref, [entity]))
         })
         .catch(error => {
-            dispatch(dlErrorActon(collectionName, url, error));
+            dispatch(dlErrorActon(cls, canonicalHref, error));
         });
     };
 }
 
 /* Dispatched by `request`. */
-export function dlRequestedAction(collectionName, url) {
-    return {
-        type: DL_REQUESTED,
-        collectionName,
-        url,
-    };
+export function dlRequestedAction(cls, url) {
+    return {type: DL_REQUESTED, cls, url};
 }
 
 /* Dispatched by `request`. */
-export function dlErrorAction(collectionName, url, error) {
-    return {
-        type: DL_ERROR,
-        collectionName,
-        url,
-        error,
-    }
+export function dlErrorAction(cls, url, error) {
+    return {type: DL_ERROR, cls, url, error};
 }
 
 /* Dispatched by `request`. */
-export function dlReceivedAction(collectionName, url, entities) {
-    return {
-        type: DL_RECEIVED,
-        collectionName,
-        url,
-        entities,
-    }
+export function dlReceivedAction(cls, url, entities) {
+    return {type: DL_RECEIVED, cls, url, entities};
+}
+
+
+export const NAV_GOTO = 'NAV_GOTO';
+
+export function navGotoAction(cls, url) {
+    return {type: NAV_GOTO, cls, url};
 }

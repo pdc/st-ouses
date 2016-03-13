@@ -9,17 +9,11 @@ import {resolve as urlResolve} from 'url';
  */
 const collectionByAttr = {
     spouses: 'persons',
-    holders: 'persons',  // when following a `holder` link
 };
 
-
-/**
- * Map collection name to entity class (lowercase).
- *
- * Generally class is singular of collection name.
- * This is only used to record exceptions to that rule.
- */
-const clsByCollection = {}
+const clsByAttr = {
+    holder: 'person',
+};
 
 
 export const initialDlState = {
@@ -31,14 +25,13 @@ export const initialDlState = {
 
 /**
 * Arguments:
-*    dlState --
-*    collection -- collection name (e.g., `cats`)
+*    dlState -- current state
 *    idOrUrl -- either a numeric ID or a string that is a URL reference
 */
-export function getLoadedEntity(dlState, collectionName, idOrUrl) {
+export function getLoadedEntity(dlState, idOrUrl) {
     let id = idOrUrl;
     if (typeof idOrUrl === 'string') {
-        let url = trimmedUrl(dlState, idOrUrl);
+        let url = unresolveUrl(dlState, idOrUrl);
         id = dlState.idsByUrl[url];
     }
     return dlState.entitiesByID[id];
@@ -46,12 +39,24 @@ export function getLoadedEntity(dlState, collectionName, idOrUrl) {
 
 
 /**
+ * Map collection name to entity class (lowercase).
+ *
+ * Generally class is singular of collection name.
+ * This is only used to record exceptions to that rule.
+ */
+const clsByCollection = {};
+
+function clsFromCollection(collectionName) {
+    return clsByCollection[collectionName] || collectionName.slice(0, collectionName.length - 1);
+}
+
+/**
  * Create a new copyof state with this entity loaded.
  * Also updated with any embedded entities.
  */
-export function withLoadedEntity(dlState, collectionName, url, entities) {
+export function withLoadedEntity(dlState, cls, url, entities) {
     if (entities.length === 0) {
-        return;
+        return dlState;
     }
 
     // Record changes here. We will apply them at the end.
@@ -59,11 +64,11 @@ export function withLoadedEntity(dlState, collectionName, url, entities) {
     let nextID = dlState.nextID;
 
     // Put one entity & return its ID.
-    function put1(collectionName, url, entities) {
+    function put1(cls, url, entities) {
         const ids = [];
         for (const entity of entities) {
             const entityUrl = urlResolve(url, entity.href);
-            const entityUrlTrimmed = trimmedUrl(dlState, entityUrl); // relative to prefix
+            const entityUrlTrimmed = unresolveUrl(dlState, entityUrl); // relative to prefix
 
             let id = dlState.idsByUrl[entityUrlTrimmed];
             const isNew = !id;
@@ -71,7 +76,6 @@ export function withLoadedEntity(dlState, collectionName, url, entities) {
                 dlState.idsByUrl[entityUrlTrimmed] = id = nextID++;
             }
 
-            const cls = clsByCollection[collectionName] || collectionName.slice(0, collectionName.length - 1);
             const entity1 = Object.assign(
                 {id, cls},
                 dlState.entitiesByID[id],
@@ -86,19 +90,19 @@ export function withLoadedEntity(dlState, collectionName, url, entities) {
                         if ('items' in v) {
                             // This is a collection.
                             const coln = collectionByAttr[k] || k;
+                            const colnCls = clsFromCollection(coln);
                             const colnUrl = urlResolve(entityUrl, v.href);
                             if (v.items) {
-                                v.ids = put1(coln, colnUrl, v.items);
+                                v.ids = put1(colnCls, colnUrl, v.items);
                             }
                             delete v.items;
                         } else if ('href' in v) {
                             // This is a single entity.
-                            const kplural = k + 's';
-                            const coln = collectionByAttr[kplural] || kplural;
+                            const vCls = clsByAttr[k] || k;
                             const vUrl = urlResolve(entityUrl, v.href);
-                            const [vID] = put1(coln, vUrl, [v]);
+                            const [vID] = put1(vCls, vUrl, [v]);
                             v.id = vID
-                            v.href =trimmedUrl(dlState, vUrl);
+                            v.href =unresolveUrl(dlState, vUrl);
                         }
                     }
                 }
@@ -109,12 +113,12 @@ export function withLoadedEntity(dlState, collectionName, url, entities) {
         return ids;
     }
 
-    put1(collectionName, url, entities);
+    put1(cls, url, entities);
     return Object.assign({}, dlState, {nextID, entitiesByID});
 }
 
 
-function trimmedUrl(dlState, url) {
+export function unresolveUrl(dlState, url) {
     if (!dlState.prefix) {
         throw Error('Cannot get entities without setting API endpoint URL.')
     }
@@ -122,4 +126,11 @@ function trimmedUrl(dlState, url) {
         return url.substr(dlState.prefix.length);
     }
     return url;
+}
+
+export function resolveHref(dlState, href) {
+    if (!dlState.prefix) {
+        throw Error('Cannot get entities without setting API endpoint URL.')
+    }
+    return urlResolve(dlState.prefix, href);
 }
