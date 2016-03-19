@@ -22,7 +22,7 @@ export default class BrowserPage extends React.Component {
 
         if (!entity) {
             // Need some kind of index page. For now jump to a known state.
-            this.props.navGotoAction('person', 'person1.json');
+            this.props.navGotoAction('person', 'person2.json');
         } else if (loadingStatus === UNKNOWN) {
             this.props.dlRequestAction(entity.cls, entity.href);
         }
@@ -43,7 +43,7 @@ function propsFromState(state, ownProps) {
     const {loadingStatus} = state.nav;
     let {entity} = state.nav;
     if (loadingStatus === OK) {
-        entity = getLoadedEntity(state.dl, entity.href);
+        entity = getLoadedEntity(state.dl, entity.href, 2);
     }
     return {
         entity,

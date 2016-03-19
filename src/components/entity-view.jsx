@@ -1,9 +1,42 @@
 import * as React from 'react';
 
-export default function EntityView({entity}) {
+import {pacomoTransformer} from '../util/pacomo';
+import LabelledValue from './labelled-value';
+import LabelledValues from './labelled-values';
+
+import './entity-view.less';
+
+
+const valueFormats = {};
+
+const skippedAttrs = new Set([
+    'cls',
+    'name',
+    'index',
+    'href',
+]);
+
+function EntityView({entity}) {
+    const propss = [];
+    for (const k in entity) {
+        if (entity.hasOwnProperty(k)) {
+            if (!skippedAttrs.has(k)) {
+                propss.push(Object.assign({name: k, label: k}, valueFormats[k], {value: entity[k]}));
+            }
+        }
+    }
     return (
-        <div className="stouses-EntityView">
-            <h1>{entity.name ? `${entity.name} (${entity.cls})` : `A ${entity.cls}`}</h1>
+        <div>
+            <h1 className='heading'>{entity.name ? `${entity.name} (${entity.cls})` : `A ${entity.cls}`}</h1>
+
+            <LabelledValues>
+                {propss.map(({name, label, value}) => <LabelledValue key={name} label={label} value={value}/>)}
+            </LabelledValues>
+
+            <pre>{JSON.stringify(entity, null, 4)}</pre>
         </div>
     );
 }
+EntityView.displayName = 'EntityView';
+
+export default pacomoTransformer(EntityView);

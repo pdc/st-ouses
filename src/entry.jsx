@@ -9,7 +9,7 @@ import BrowserPage from './containers/browser-page';
 import {optionsAction} from './actions';
 import {reducer} from './reducers';
 
-import "./style.css";
+import "./style.less";
 
 
 // Create the store.

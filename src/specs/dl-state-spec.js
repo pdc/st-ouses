@@ -1,46 +1,98 @@
 import {initialDlState, getLoadedEntity, withLoadedEntity} from '../dl-state';
 
 describe('getLoadedEntity', () => {
-    const entity = {
-        href: "person4.json",
-        name: "Charley",
-        sacks: {
-            ids: null,
-            href: "person4-sacks.json"
-        },
-        spouses: {
-            ids: [],
-            href: "person4-spouses.json"
-        },
-    };
-    const dlState = Object.assign({}, initialDlState, {
-        prefix: 'http://example.com/foo/',
-        idsByUrl: {
-            'person4.json': 13,
-        },
-        entitiesByID: {
-            13: entity,
-        }
+    describe('(depth 0)', () => {
+        const entity = {
+            href: "person4.json",
+            name: "Charley",
+            sacks: {
+                ids: null,
+                href: "person4-sacks.json"
+            },
+            spouses: {
+                ids: [],
+                href: "person4-spouses.json"
+            },
+        };
+        const dlState = Object.assign({}, initialDlState, {
+            prefix: 'http://example.com/foo/',
+            idsByUrl: {
+                'person4.json': 13,
+            },
+            entitiesByID: {
+                13: entity,
+            }
+        });
+
+        it('returns entity by ID', () => {
+            expect(getLoadedEntity(dlState, 13)).toEqual(entity);
+        });
+
+        it('returns falsy if no entity with ID', () => {
+            expect(getLoadedEntity(dlState, 17)).toBeFalsy();
+        });
+
+        it('returns entity by Url relative to prefix', () => {
+            expect(getLoadedEntity(dlState, 'person4.json')).toEqual(entity);
+        });
+
+        it('returns falsy if no entity with Url', () => {
+            expect(getLoadedEntity(dlState, 'person9.json')).toBeFalsy();
+        });
+
+        it('returns entity by Url including prefix', () => {
+            expect(getLoadedEntity(dlState, 'http://example.com/foo/person4.json')).toEqual(entity);
+        });
     });
 
-    it('returns entity by ID', () => {
-        expect(getLoadedEntity(dlState, 13)).toEqual(entity);
-    });
+    describe('(depth 1)', () => {
+        const entity1 = {
+            href: '/cats/13/',
+            name: 'Fang',
+            cls: 'cat',
+            aloofness: 13,
+            kits: {
+                ids: [2, 3],
+            }
+        };
+        const entity2 = {
+            href: '/kits/14/',
+            name: 'Tiddles',
+            cls: 'kit',
+            fluffiness: 7,
+            cat: {
+                id: 1,
+            }
+        };
+        const entity3 = {
+            href: '/kits/15/',
+            name: 'Tinkle',
+            cls: 'kit',
+            fluffiness: 6,
+            cat: {
+                id: 1,
+            }
+        };
+        const dlState = Object.assign({}, initialDlState, {
+            prefix: 'http://example.com/foo/',
+            idsByUrl: {
+                'cats/13/': 1,
+                'kits/14/': 2,
+                'kits/15/': 3,
+            },
+            entitiesByID: {
+                1: entity1,
+                2: entity2,
+                3: entity3,
+            }
+        });
 
-    it('returns falsy if no entity with ID', () => {
-        expect(getLoadedEntity(dlState, 17)).toBeFalsy();
-    });
+        it('loads kits as well as cats', () => {
+            const result = getLoadedEntity(dlState, 'cats/13/', 1);
 
-    it('returns entity by Url relative to prefix', () => {
-        expect(getLoadedEntity(dlState, 'person4.json')).toEqual(entity);
-    });
-
-    it('returns falsy if no entity with Url', () => {
-        expect(getLoadedEntity(dlState, 'person9.json')).toBeFalsy();
-    });
-
-    it('returns entity by Url including prefix', () => {
-        expect(getLoadedEntity(dlState, 'http://example.com/foo/person4.json')).toEqual(entity);
+            expect(result.kits.items[0].name).toBe('Tiddles');
+            expect(result.kits.items[1].name).toBe('Tinkle');
+        });
     });
 });
 

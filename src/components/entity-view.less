@@ -1,0 +1,22 @@
+@import (reference) "../util/defs.less";
+
+@max-wd: (@u * 6);
+
+.stouses-EntityView {
+    margin-left: @outer-gap;
+    margin-right: @outer-gap;
+
+    @media (min-width: (2 * @outer-gap + @max-wd - @gap + 1px)) {
+        margin-left: auto;
+        margin-right: auto;
+        width: @max-wd;
+    }
+
+    &-heading {
+        margin: 1em @half-gap 0.5em;
+
+        color: @primary-color;
+        font-weight: 700;
+        font-style: italic;
+    }
+}

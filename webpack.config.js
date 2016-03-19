@@ -1,6 +1,9 @@
+/*jslint node: true */
+'use strict';
+
 const webpack = require('webpack');
 const TransferWebpackPlugin = require('transfer-webpack-plugin');
-
+const LessPluginCleanCSS = require('less-plugin-clean-css');
 
 module.exports = {
     context: __dirname + '/src',
@@ -25,8 +28,17 @@ module.exports = {
             {
                 test: /\.css$/,
                 loader: 'style!css'
+            },
+            {
+                test: /\.less$/,
+                loader: "style!css!less"
             }
         ],
+    },
+    lessLoader: {
+        lessPlugins: [
+            new LessPluginCleanCSS({advanced: true})
+        ]
     },
     resolve: {
         root: __dirname + '/src',

@@ -1,0 +1,22 @@
+@import (css) "~normalize.css/normalize.css";
+@import (reference) "util/defs.less";
+
+html {
+    margin: 0;
+    padding: 0;
+
+    font-size: @text-size;
+}
+
+body {
+    margin: 0;
+    padding: 0;
+
+    line-height: 1.25;
+    color: @text-color;
+    background-color: @bg-color;
+
+    .wf-alegreya-n4-active & {
+        font-family: "Alegreya", serif;
+    }
+}

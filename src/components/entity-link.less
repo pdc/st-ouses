@@ -1,0 +1,17 @@
+@import (reference) "../util/defs.less";
+
+.stouses-EntityLink {
+    color: @link-color;
+    text-decoration: none;
+
+    &.visited {
+        color: @visited-color;
+    }
+
+    b {
+        font-weight: normal;
+    }
+    &:hover b {
+        text-decoration: underline;
+    }
+}

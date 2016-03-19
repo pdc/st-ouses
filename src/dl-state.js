@@ -28,13 +28,27 @@ export const initialDlState = {
 *    dlState -- current state
 *    idOrUrl -- either a numeric ID or a string that is a URL reference
 */
-export function getLoadedEntity(dlState, idOrUrl) {
+export function getLoadedEntity(dlState, idOrUrl, depth=0) {
     let id = idOrUrl;
     if (typeof idOrUrl === 'string') {
         let url = unresolveUrl(dlState, idOrUrl);
         id = dlState.idsByUrl[url];
     }
-    return dlState.entitiesByID[id];
+    let entity = dlState.entitiesByID[id];
+    let copy = null;
+    if (entity && depth > 0) {
+        for (const k in entity) {
+            if (entity.hasOwnProperty(k)) {
+                if (entity[k].ids) {
+                    if (!copy) {
+                        entity = copy = Object.assign({}, entity);
+                    }
+                    entity[k].items = entity[k].ids.map(id => getLoadedEntity(dlState, id, depth - 1));
+                }
+            }
+        }
+    }
+    return entity;
 }
 
 
