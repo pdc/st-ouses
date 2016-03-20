@@ -39,10 +39,11 @@
   },
   "scripts": {
     "build": "webpack --progess --colors",
-    "start": "webpack-dev-server --hot --progress --colors --port 8087",
+    "start": "webpack-dev-server --inline --progress --colors --port 8087",
     "test": "karma start karma.conf.js --single-run",
     "karma": "karma start karma.conf.js"
   },
   "author": "Damian Cugley",
-  "license": "ISC"
+  "license": "ISC",
+  "private": true
 }
