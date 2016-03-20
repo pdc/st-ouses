@@ -16,7 +16,7 @@ const skippedAttrs = new Set([
     'href',
 ]);
 
-function EntityView({entity}) {
+function EntityView({entity, onEntityActivate}) {
     const propss = [];
     for (const k in entity) {
         if (entity.hasOwnProperty(k)) {
@@ -30,10 +30,8 @@ function EntityView({entity}) {
             <h1 className='heading'>{entity.name ? `${entity.name} (${entity.cls})` : `A ${entity.cls}`}</h1>
 
             <LabelledValues>
-                {propss.map(({name, label, value}) => <LabelledValue key={name} label={label} value={value}/>)}
+                {propss.map(({name, label, value}) => <LabelledValue key={name} label={label} value={value} onEntityActivate={onEntityActivate}/>)}
             </LabelledValues>
-
-            <pre>{JSON.stringify(entity, null, 4)}</pre>
         </div>
     );
 }

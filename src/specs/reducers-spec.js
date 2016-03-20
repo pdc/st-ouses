@@ -1,5 +1,5 @@
 import {reducer} from '../reducers';
-import {dlRequestedAction, dlReceivedAction, optionsAction, navGotoAction} from '../actions';
+import {dlRequestedAction, dlReceivedAction, optionsAction, navEntityAction} from '../actions';
 import {getLoadedEntity} from '../dl-state';
 import {initialNavState, UNKNOWN, LOADING, OK} from '../nav-state';
 
@@ -56,7 +56,7 @@ describe('nav [reducer]', () => {
     });
 
     it('sets entityUrl after GOTO', () => {
-        const after = reducer(before, navGotoAction('person', 'person34/'));
+        const after = reducer(before, navEntityAction('person', 'person34/'));
 
         expect(after.nav.entity.href).toBe('person34/');
         expect(after.nav.entity.cls).toBe('person');
@@ -64,7 +64,7 @@ describe('nav [reducer]', () => {
     });
 
     it('sets loadingStatus to LOADING when REQUESTED', () => {
-        before = reducer(before, navGotoAction('person', 'persons/34/'));
+        before = reducer(before, navEntityAction('person', 'persons/34/'));
 
         const after = reducer(before, dlRequestedAction('person', 'persons/34/'));
 
@@ -72,7 +72,7 @@ describe('nav [reducer]', () => {
     });
 
     it('doesn’t set loadingStatus when REQUESTED wth different URL', () => {
-        before = reducer(before, navGotoAction('person', 'persons/34/'));
+        before = reducer(before, navEntityAction('person', 'persons/34/'));
 
         const after = reducer(before, dlRequestedAction('person', 'cats/69/'));
 
@@ -80,7 +80,7 @@ describe('nav [reducer]', () => {
     });
 
     it('sets loadingStatus to OK when RECEIVED', () => {
-        before = reducer(before, navGotoAction('person', 'persons/34/'));
+        before = reducer(before, navEntityAction('person', 'persons/34/'));
 
         const after = reducer(before, dlReceivedAction('person', 'persons/34/', []));
 

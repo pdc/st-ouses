@@ -4,11 +4,21 @@ import {pacomoTransformer} from '../util/pacomo';
 import './entity-link.less';
 
 
-function EntityLink({entity}) {
+function EntityLink({entity, onActivate}) {
+    const onClick = onActivate && (ev => {ev.preventDefault(); onActivate();});
     if ('name' in entity) {
-        return <a href="#"><b>{entity.name}</b> <small>({entity.cls})</small></a>;
+        return (
+            <a href="#" onClick={onClick}>
+                <b>{entity.name}</b> <small>({entity.cls})</small>
+            </a>
+        );
+    } else {
+        return (
+            <a href="#" onClick={onClick}>
+                <b>A {entity.cls}</b>
+            </a>
+        );
     }
-    return <a href="#"><b>A {entity.cls}</b></a>;
 }
 EntityLink.displayName = 'EntityLink';
 

@@ -34,21 +34,26 @@ export function getLoadedEntity(dlState, idOrUrl, depth=0) {
         let url = unresolveUrl(dlState, idOrUrl);
         id = dlState.idsByUrl[url];
     }
-    let entity = dlState.entitiesByID[id];
+    const entity = dlState.entitiesByID[id];
     let copy = null;
     if (entity && depth > 0) {
         for (const k in entity) {
             if (entity.hasOwnProperty(k)) {
-                if (entity[k].ids) {
+                if (entity[k].id) {
                     if (!copy) {
-                        entity = copy = Object.assign({}, entity);
+                        copy = Object.assign({}, entity);
                     }
-                    entity[k].items = entity[k].ids.map(id => getLoadedEntity(dlState, id, depth - 1));
+                    copy[k] = getLoadedEntity(dlState, entity[k].id, depth - 1);
+                } else if (entity[k].ids) {
+                    if (!copy) {
+                        copy = Object.assign({}, entity);
+                    }
+                    copy[k].items = entity[k].ids.map(id => getLoadedEntity(dlState, id, depth - 1));
                 }
             }
         }
     }
-    return entity;
+    return copy || entity;
 }
 
 

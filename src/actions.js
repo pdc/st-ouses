@@ -62,8 +62,8 @@ export function dlReceivedAction(cls, url, entities) {
 }
 
 
-export const NAV_GOTO = 'NAV_GOTO';
+export const NAV_ENTITY = 'NAV_ENTITY';
 
-export function navGotoAction(cls, url) {
-    return {type: NAV_GOTO, cls, url};
+export function navEntityAction(cls, url) {
+    return {type: NAV_ENTITY, cls, url};
 }

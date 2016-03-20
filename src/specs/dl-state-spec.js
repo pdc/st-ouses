@@ -53,7 +53,10 @@ describe('getLoadedEntity', () => {
             aloofness: 13,
             kits: {
                 ids: [2, 3],
-            }
+            },
+            sack: {
+                id: 4,
+            },
         };
         const entity2 = {
             href: '/kits/14/',
@@ -62,7 +65,7 @@ describe('getLoadedEntity', () => {
             fluffiness: 7,
             cat: {
                 id: 1,
-            }
+            },
         };
         const entity3 = {
             href: '/kits/15/',
@@ -71,8 +74,15 @@ describe('getLoadedEntity', () => {
             fluffiness: 6,
             cat: {
                 id: 1,
-            }
+            },
         };
+        const entity4 = {
+            href: '/sacks/69/',
+            cls: 'sack',
+            cats: {
+                ids: [1],
+            },
+        }
         const dlState = Object.assign({}, initialDlState, {
             prefix: 'http://example.com/foo/',
             idsByUrl: {
@@ -84,6 +94,7 @@ describe('getLoadedEntity', () => {
                 1: entity1,
                 2: entity2,
                 3: entity3,
+                4: entity4,
             }
         });
 
@@ -92,6 +103,12 @@ describe('getLoadedEntity', () => {
 
             expect(result.kits.items[0].name).toBe('Tiddles');
             expect(result.kits.items[1].name).toBe('Tinkle');
+        });
+
+        it('loads cat as well as kit', () => {
+            const result = getLoadedEntity(dlState, 'kits/14/', 1);
+
+            expect(result.cat.name).toBe('Fang');
         });
     });
 });

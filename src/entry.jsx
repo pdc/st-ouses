@@ -5,7 +5,7 @@ import {createStore, applyMiddleware} from 'redux';
 import createLogger from 'redux-logger';
 import thunkMiddleware from 'redux-thunk';
 
-import BrowserPage from './containers/browser-page';
+import NavPage from './containers/nav-page';
 import {optionsAction} from './actions';
 import {reducer} from './reducers';
 
@@ -28,5 +28,5 @@ store.dispatch(optionsAction({
 // Render the app.
 
 ReactDom.render(
-    <Provider store={store}><BrowserPage/></Provider>,
+    <Provider store={store}><NavPage/></Provider>,
     document.getElementById('main'));

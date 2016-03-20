@@ -1,6 +1,6 @@
 import {combineReducers} from 'redux';
 
-import {OPTIONS, DL_REQUESTED, DL_RECEIVED, DL_ERROR, NAV_GOTO} from './actions';
+import {OPTIONS, DL_REQUESTED, DL_RECEIVED, DL_ERROR, NAV_ENTITY} from './actions';
 import {withLoadedEntity, initialDlState} from './dl-state';
 import {initialNavState, UNKNOWN, LOADING, OK, ERROR} from './nav-state';
 
@@ -34,7 +34,7 @@ function nav(state=initialNavState, action) {
         return state;
     }
     switch (action.type) {
-        case NAV_GOTO:
+        case NAV_ENTITY:
             return Object.assign({}, state, {
                 entity: {href: action.url, cls: action.cls},
                 loadingStatus: UNKNOWN,
