@@ -1,9 +1,11 @@
-Let’s create some a fake API server!
+# Fake data fro St Ouses
 
-This uses Python to generate the data. You can also use Python’s
-built-in HTTP server to serve the files.
+Let’s create some fake API data!
 
-# Creating data
+This uses Python to generate the data.
+
+
+## Creating data
 
 Run this command:
 
@@ -12,10 +14,14 @@ Run this command:
 This generates around 100 `.json` files.
 
 
-# Running the server
+## Running the server
 
-Python has a built in server which can be activated thusly:
+Python has a built in server which can be activated thusly if you
+want to run it standalone:
 
     python -m SimpleHTTPServer 8086
 
 The API is then available on <http://localhost:8086/index.json>
+
+Note that you do not need to run the fake data server if you are
+already running the UI server.
