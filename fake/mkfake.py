@@ -1,94 +1,107 @@
 #! /usr/bin/env python
 # -*-coding: UTF-8-*-
 
+"""Simple command to generate fake data for St Ouses."""
+
 from __future__ import unicode_literals
 import random
 import unittest
 
 
-def get_id():
-    get_id.id_count += 1
-    return get_id.id_count
-get_id.id_count = 0
+def _get_id():
+    _get_id.id_count += 1
+    return _get_id.id_count
+_get_id.id_count = 0
 
 
 class UnexpectedArg(Exception):
+    """Raised if Entity receives an unexpected arg."""
+
     pass
 
 
 class Entity(object):
+    """Base class for entity.
+
+    Subclass must override `class_name`, `lin_fields`, `entry_fields` and maybe `__init__`.
+    """
+
     # The following must be overridden in subclass:
-    class_name = None
-    link_fields = None  # list of attribute names
-    entity_fields = None
-    vs = 'aeiou'.split(None) + ['ai', 'ao', 'au', 'ey', 'ei', 'eo', 'oo']
-    cs = 'bdfghklmnprstvw'.split(None) + ['sh', 'ch', 'th', 'sl']
-    mids = ['%s%s' % (c, v) for c in cs for v in vs]
-    random.shuffle(mids)
-    ends = 'bdfghklmnprstvwz'.split(None) + ['ck', 'ty', 'to', 'ss', 'zz', '']
+    class_name = None  # Used when generating URLs and file names.
+    link_fields = None  # Which attributes are included in a link to the entity.
+    member_fields = None  # Map from attr name to attr name of collection on other entity.
+    collection_fields = None  # Map from attr name to attr name of membership on other entity.
+    entity_fields = None  # Addition attributes for the full version of the entity
 
     def __init__(self, **kwargs):
-        self.id = kwargs.pop('id', None) or get_id()
+        """Create entity.
+
+        Arguments --
+          id (number) -- optional (mints a fresh ID);
+          name (string) -- optional (uses class name and a number);
+          attributes named in link_fields (apart from name) are required;
+          attributes named in entity_fields are optional.
+        """
+        self.id = kwargs.pop('id', None) or _get_id()
         if 'name' in self.link_fields and 'name' not in kwargs:
-            k = self.id
-            k_end = k % len(self.ends)
-            xs = []
-            while k:
-                k, kk = divmod(k, len(self.mids))
-                xs.append(kk)
-            kwargs['name'] = (''.join(self.mids[x] for x in xs) + self.ends[k_end]).title()
+            kwargs['name'] = '%s %d' % (self.class_name, self.id)
         for n in self.link_fields:
             v = kwargs.pop(n)
             setattr(self, n, v)
         for n in self.entity_fields:
             v = kwargs.pop(n, None)
             setattr(self, n, v)
+        for n, m in self.member_fields.items():
+            other = kwargs.pop(n, None)
+            setattr(self, n, other)
+            if other:
+                xs = getattr(other, m)
+                if self not in xs:
+                    xs.append(self)
+        for n, m in self.collection_fields.items():
+            xs = kwargs.pop(n, [])
+            setattr(self, n, xs)
+            for x in xs:
+                setattr(x, m, self)
         if kwargs:
             raise UnexpectedArg('Did not expect %s' % kwargs.keys())
 
-    def _update_collection_in_kwargs(self, collection_attr, reverse_attr, cls, kwargs, x_kwargs):
-        """Called during __init__ to add colection to kwargs.
-        """
-        xs = list(kwargs.pop(collection_attr, []))
-
-        for x in xs:
-            setattr(x, reverse_attr, self)
-        count_attr = collection_attr[:-1] + '_count'
-        x_count = kwargs.get(count_attr, 0)
-        if x_count:
-            aargs = dict(x_kwargs)
-            aargs[reverse_attr] = self
-            xs.extend(cls(**aargs) for i in range(x_count))
-        kwargs[collection_attr] = xs
-
     def file_name(self, suffix=''):
+        """Return a file name for saving this entity in to."""
         return '%s%d%s.json' % (self.class_name, self.id, suffix)
 
     def __repr__(self):
+        """Representation of the entity for debugging."""
         return ('<%s #%d%s>' % (
             self.__class__.__name__,
             self.id,
             ''.join(' %r' % (getattr(self, n),) for n in self.link_fields)))
 
     def to_link_obj(self):
-        return _to_obj_2(self, max_depth=0)
+        """Object suitable for serializing in to JSON containing only mandatory attributes."""
+        return _obj_from_entity(self, max_depth=0)
 
     def to_entity_obj(self, max_depth=1):
-        return _to_obj_2(self, max_depth=max_depth)
+        """Object suitable for serializing to JSON containing all attributes.
+
+        max_depth -- controls how much information is included about
+            entities linked to from this one
+        """
+        return _obj_from_entity(self, max_depth=max_depth)
 
 
-def _to_obj_2(x, depth=0, seen=None, max_depth=None):
+def _obj_from_entity(x, depth=0, seen=None, max_depth=None):
     if not isinstance(x, Entity):
         raise TypeError('Expected Entity, got %r' % (x,))
     was_seen = seen and x in seen
     if not seen:
-        seen = {x}
+        seen = set([x])
     else:
         seen.add(x)
     obj = {'href': x.file_name()}
     ns = x.link_fields
     if not (was_seen or max_depth is not None and depth >= max_depth):
-        ns = x.link_fields + x.entity_fields
+        ns = x.link_fields + x.entity_fields + x.member_fields.keys() + x.collection_fields.keys()
     for n in ns:
         v = getattr(x, n, None)
         if v is None or (isinstance(v, Entity) and v in seen):
@@ -96,62 +109,65 @@ def _to_obj_2(x, depth=0, seen=None, max_depth=None):
         elif isinstance(v, (basestring, int, float, bool)):
             obj[n] = v
         elif isinstance(v, Entity):
-            obj[n] = _to_obj_2(v, depth + 1, seen, max_depth)
+            obj[n] = _obj_from_entity(v, depth + 1, seen, max_depth)
         elif hasattr(v, '__iter__'):
             obj[n] = {
                 'href': x.file_name('-%s' % (n,)),
             }
             if max_depth is None or depth + 1 < max_depth:
-                obj[n]['items'] = [_to_obj_2(e, depth + 2, seen, max_depth) for e in v]
+                obj[n]['items'] = [_obj_from_entity(e, depth + 2, seen, max_depth) for e in v]
         else:
             raise TypeError('Don’t know how to objectify %n=%r' % (n, v))
     return obj
 
 
 class Kit(Entity):
+    """Represents a kit."""
+
     class_name = 'kit'
     link_fields = ['name']
-    entity_fields = ['fluffiness', 'cat']
-    ends = Entity.ends + ['ff', 'ffle', 'fflepaws', 'kins', 'dles']
-
-    def __init__(self, **kwargs):
-        super(Kit, self).__init__(**kwargs)
-        if self.cat and self not in self.cat.kits:
-            self.cat.kits.append(self)
+    entity_fields = ['fluffiness']
+    collection_fields = {}
+    member_fields = {'cat': 'kits'}
 
 
 class Cat(Entity):
+    """Represents a cat."""
+
     class_name = 'cat'
     link_fields = ['name']
-    entity_fields = ['aloofness', 'sack', 'kits']
-    ends = Entity.ends + ['fang']
-
-    def __init__(self, **kwargs):
-        self._update_collection_in_kwargs('kits', 'cat', Kit, kwargs, {})
-        super(Cat, self).__init__(**kwargs)
-        if self.sack and self not in self.sack.cats:
-            self.sack.cats.append(self)
+    entity_fields = ['aloofness']
+    member_fields = {'sack': 'cats'}
+    collection_fields = {'kits': 'cat'}
 
 
 class Sack(Entity):
+    """Represents a sack."""
+
     class_name = 'sack'
     link_fields = []
-    entity_fields = ['holder', 'cats']
-
-    def __init__(self, kit_count=0, **kwargs):
-        self._update_collection_in_kwargs('cats', 'sack', Cat, kwargs, {})
-        super(Sack, self).__init__(**kwargs)
-        if self.holder and self not in self.holder.sacks:
-            self.holder.sacks.append(self)
+    entity_fields = []
+    member_fields = {'holder': 'sacks'}
+    collection_fields = {'cats': 'sack'}
 
 
 class Person(Entity):
+    """Represents a person."""
+
     class_name = 'person'
     link_fields = ['name']
-    entity_fields = ['sacks', 'spouses', 'index']
+    entity_fields = ['spouses']
+    member_fields = {'index': 'persons'}
+    collection_fields = {'sacks': 'holder'}
 
     def __init__(self, cat_count=0, kit_count=0, **kwargs):
-        self._update_collection_in_kwargs('sacks', 'holder', Sack, kwargs, {})
+        """Create a person.
+
+        id -- optional
+        name -- optional (but the default is lousy so always supply it)
+        spouses -- list of other persons this peson is married to
+        sacks -- list of sacks this person is holding
+        """
         super(Person, self).__init__(**kwargs)
         if not self.spouses:
             self.spouses = []
@@ -165,16 +181,16 @@ class Person(Entity):
 
 
 class Index(Entity):
-    """The index page has lists of people & not much else."""
+    """The index page has list of people & not much else."""
+
     class_name = 'index'
     link_fields = []
-    entity_fields = ['persons']
-
-    def __init__(self, kit_count=0, **kwargs):
-        self._update_collection_in_kwargs('persons', 'index', Cat, kwargs, {})
-        super(Index, self).__init__(**kwargs)
+    entity_fields = []
+    member_fields = {}
+    collection_fields = {'persons': 'index'}
 
     def file_name(self, suffix=''):
+        """Name of file."""
         return 'index%s.json' % (suffix,)
 
 
@@ -302,7 +318,7 @@ class TestSpouses(unittest.TestCase):
         ps.append(Person(name='Deepak', spouses=ps))
         ps.append(Person(name='Charley'))
 
-        # Check this doesn’t accidentally add Charley as a spoise of Alice et al.
+        # Check this doesn’t accidentally add Charley as a spouse of Alice et al.
         self.assertNotIn(ps[3], ps[2].spouses)
 
 
