@@ -157,7 +157,7 @@ class Person(Entity):
     class_name = 'person'
     link_fields = ['name']
     entity_fields = ['spouses']
-    member_fields = {'index': 'persons'}
+    member_fields = {'home': 'inhabitants'}
     collection_fields = {'sacks': 'holder'}
 
     def __init__(self, cat_count=0, kit_count=0, **kwargs):
@@ -184,10 +184,10 @@ class Index(Entity):
     """The index page has list of people & not much else."""
 
     class_name = 'index'
-    link_fields = []
+    link_fields = ['name']
     entity_fields = []
     member_fields = {}
-    collection_fields = {'persons': 'index'}
+    collection_fields = {'inhabitants': 'home'}
 
     def file_name(self, suffix=''):
         """Name of file."""
@@ -344,6 +344,6 @@ if __name__ == '__main__':
     cs = [Cat(name=n, sack=random.choice(ss), aloofness=random.randint(5, 15)) for n in ns[:20]]
     ks = [Kit(name=n, cat=random.choice(cs), fluffiness=random.randint(3, 10)) for n in ns[20:]]
 
-    for p in ps + ss + cs + ks + [Index(persons=ps)]:
+    for p in ps + ss + cs + ks + [Index(name='St Ouses', inhabitants=ps)]:
         with open(p.file_name(), 'wb') as strm:
             json.dump(p.to_entity_obj(max_depth=2), strm, indent=4)

@@ -12,7 +12,6 @@ const valueFormats = {};
 const skippedAttrs = new Set([
     'cls',
     'name',
-    'index',
     'href',
 ]);
 
