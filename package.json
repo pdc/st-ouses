@@ -2,6 +2,7 @@
   "name": "stouses",
   "version": "0.1.0",
   "description": "Navigate the St Ouses census data.",
+  "repository": "pdc/st-ouses",
   "main": "server.js",
   "dependencies": {},
   "devDependencies": {
