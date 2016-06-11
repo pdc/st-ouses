@@ -4,7 +4,7 @@ St Ouses
 This is a toy app for playing with [A RESTful API for St Ouses][1].
 
 I wanteed to experiment with aporoaches to web APIs that did not
-involve daa even remotely resembling that which I work with at my
+involve data even remotely resembling that which I work with at my
 paid job.
 
   [1]: http://alleged.org.uk/pdc/2016/02/19.html
