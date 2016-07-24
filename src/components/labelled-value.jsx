@@ -6,7 +6,6 @@ import EntityLink from './entity-link';
 import './labelled-value.less';
 
 
-
 export default pacomoTransformer(
     function LabelledValue({label, value, onEntityActivate}) {
         return (

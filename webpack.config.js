@@ -6,19 +6,20 @@ const TransferWebpackPlugin = require('transfer-webpack-plugin');
 const LessPluginCleanCSS = require('less-plugin-clean-css');
 
 module.exports = {
-    context: __dirname + '/src',
-    entry: './entry.jsx',
+    entry: [
+        'whatwg-fetch',
+        __dirname + '/src/entry.jsx',
+    ],
     output: {
-        path: __dirname + '/build',
-        publicPath: '/assets/',
-        filename: 'bundle.js'
+        path: __dirname + '/build/',
+        filename: 'assets/bundle.js'
     },
     module: {
         loaders: [
             {
                 test: /\.jsx?$/,
                 exclude: /(node_modules|bower_components)/,
-                loader: 'babel', // 'babel-loader' is also a legal name to reference
+                loader: 'babel-loader',
                 query: {
                     presets: ['react', 'es2015'],
                     plugins: ['transform-runtime'],
@@ -41,18 +42,13 @@ module.exports = {
         ]
     },
     resolve: {
-        root: __dirname + '/src',
         extensions: ['', '.webpack.js', '.web.js', '.js', '.jsx']
     },
     plugins: [
         new webpack.optimize.OccurrenceOrderPlugin(true),
-        new webpack.HotModuleReplacementPlugin(),
         new TransferWebpackPlugin([
-            {from: 'root', to: ''}
+            {from: 'src/root'}
         ]),
-        new webpack.ProvidePlugin({
-            'fetch': 'imports?this=>global!exports?global.fetch!whatwg-fetch'
-        }),
         /*
         new webpack.optimize.UglifyJsPlugin({
             compress: {
